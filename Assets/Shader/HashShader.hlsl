@@ -15,6 +15,7 @@ float3 GetHashColor()
             hash & 255,
             (hash >> 8) & 255,
             (hash >> 16) & 255
+            //last byte is not used    
         );
     #else
         return 1.0; 
@@ -24,15 +25,13 @@ float3 GetHashColor()
 void ConfigureProcedural()
 {
     #if defined(UNITY_PROCEDURAL_INSTANCING_ENABLED)
-
     unity_ObjectToWorld = 0.0;
     unity_ObjectToWorld._m03_m13_m23_m33 = float4(
         _Positions[unity_InstanceID],
         1.0
     );
-    unity_ObjectToWorld._m03_m13_m23 +=
-        (_Config.z * ((1.0 / 255.0) * (_Hashes[unity_InstanceID] >> 24) - 0.5)) * _Normals[unity_InstanceID];
-    unity_ObjectToWorld._m00_m11_m22 = _Config.y;
+    unity_ObjectToWorld._m03_m13_m23 += _Config.z  * _Normals[unity_InstanceID]; //(_Config.z) displacement * normal direction
+    unity_ObjectToWorld._m00_m11_m22 = _Config.y; // 1 / res
     #endif
 }
 

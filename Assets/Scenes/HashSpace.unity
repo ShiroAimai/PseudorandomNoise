@@ -268,11 +268,13 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: c2a5f2f77b0333a44a3ee5f3dd54dd68, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
+  shape: 3
   seed: 0
-  displacement: 0.1
+  singleInstanceDisplacement: 0.1
+  singleInstanceScale: 1
+  res: 64
   mesh: {fileID: 10202, guid: 0000000000000000e000000000000000, type: 0}
   mat: {fileID: 2100000, guid: 89f7f85879f3a6945a32a15167873859, type: 2}
-  res: 32
   domain:
     translation:
       x: 0

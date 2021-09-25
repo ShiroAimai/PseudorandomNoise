@@ -13,11 +13,24 @@ public class HashSpace : MonoBehaviour
       normalsId = Shader.PropertyToID("_Normals"),
       configId = Shader.PropertyToID("_Config");
 
+   public enum Shape { Plane, Sphere, Octahedron, Torus }
+
+   static Shapes.ScheduleDelegate[] shapeJobs = {
+         Shapes.Job<Shapes.Plane>.ScheduleParallel,
+         Shapes.Job<Shapes.Sphere>.ScheduleParallel,
+         Shapes.Job<Shapes.Octahedron>.ScheduleParallel,
+         Shapes.Job<Shapes.Torus>.ScheduleParallel
+   };
+   
+   [SerializeField]
+   Shape shape;
+   
    [SerializeField] private int seed;
-   [SerializeField, Range(-0.5f, 0.5f)] private float displacement = 0.1f;
+   [SerializeField, Range(-0.5f, 0.5f)] private float singleInstanceDisplacement = 0.1f;
+   [SerializeField, Range(0.1f, 10f)] private float singleInstanceScale = 1f;
+   [SerializeField, Range(1, 512)] private int res = 16;
    [SerializeField] private Mesh mesh;
    [SerializeField] private Material mat;
-   [SerializeField, Range(1, 512)] private int res = 16;
    [SerializeField] private SpaceTRS domain = new SpaceTRS {scale = 8f};
    
    private NativeArray<uint4> hashes;
@@ -25,7 +38,7 @@ public class HashSpace : MonoBehaviour
    private ComputeBuffer hashesBuffer, positionsBuffer, normalsBuffer;
    private MaterialPropertyBlock propertyBlock;
 
-   private bool isDirty = false;
+   private bool isDirty;
    private Bounds bounds;
    
    [BurstCompile(FloatPrecision.Standard, FloatMode.Fast, CompileSynchronously = true)]
@@ -39,9 +52,10 @@ public class HashSpace : MonoBehaviour
          trs.c0.y * pos.c0 + trs.c1.y * pos.c1 + trs.c2.y * pos.c2 + trs.c3.y,
          trs.c0.z * pos.c0 + trs.c1.z * pos.c1 + trs.c2.z * pos.c2 + trs.c3.z
       );
-      public SmallXXHash4 hash;
       
+      public SmallXXHash4 hash;
       public float3x4 domainTRS;
+      
       public void Execute(int index)
       {
          float4x3 pos = TransformPos(domainTRS, transpose(positions[index])); 
@@ -70,7 +84,7 @@ public class HashSpace : MonoBehaviour
       propertyBlock.SetBuffer(hashesId, hashesBuffer);
       propertyBlock.SetBuffer(positionsId, positionsBuffer);
       propertyBlock.SetBuffer(normalsId, normalsBuffer);
-      propertyBlock.SetVector(configId, new Vector4(res, 1f / res, displacement));
+      propertyBlock.SetVector(configId, new Vector4(res, singleInstanceScale / res, singleInstanceDisplacement));
    }
 
    private void OnDisable()
@@ -99,8 +113,8 @@ public class HashSpace : MonoBehaviour
       {
          isDirty = false;
          transform.hasChanged = false;
-         bounds = new Bounds(transform.position, float3(2f * cmax(abs(transform.lossyScale)) + displacement));
-         JobHandle handle = Shapes.Job.ScheduleParallel(
+         bounds = new Bounds(transform.position, float3(2f * cmax(abs(transform.lossyScale)) + singleInstanceDisplacement));
+         JobHandle handle = shapeJobs[(int) shape](
             positions, normals, transform.localToWorldMatrix, res, default
          );
 
@@ -115,6 +129,7 @@ public class HashSpace : MonoBehaviour
          positionsBuffer.SetData(positions.Reinterpret<float3>(3 * 4 * 4));
          normalsBuffer.SetData(normals.Reinterpret<float3>(3 * 4 * 4));
       }
+      
       Graphics.DrawMeshInstancedProcedural(mesh, 0, mat, bounds, res * res, propertyBlock);
    }
 }
